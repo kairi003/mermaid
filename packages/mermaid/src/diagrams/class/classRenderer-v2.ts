@@ -8,7 +8,7 @@ import utils, { getEdgeId } from '../../utils.js';
 import { interpolateToCurve, getStylesFromArray } from '../../utils.js';
 import { setupGraphViewbox } from '../../setupGraphViewbox.js';
 import common from '../common/common.js';
-import type { ClassRelation, ClassNote, ClassMap, NamespaceMap } from './classTypes.js';
+import type { ClassRelation, ClassMap, ClassNoteMap, NamespaceMap } from './classTypes.js';
 import type { EdgeData } from '../../types.js';
 
 const sanitizeText = (txt: string) => common.sanitizeText(txt, getConfig());
@@ -65,6 +65,9 @@ export const addNamespaces = function (
 
     g.setNode(vertex.id, node);
     addClasses(vertex.classes, g, _id, diagObj, vertex.id);
+    const classes: ClassMap = diagObj.db.getClasses();
+    const relations: ClassRelation[] = diagObj.db.getRelations();
+    addNotes(vertex.notes, g, relations.length + 1, classes, vertex.id);
 
     log.info('setNode', node);
   });
@@ -144,15 +147,17 @@ export const addClasses = function (
  * @param classes - Classes
  */
 export const addNotes = function (
-  notes: ClassNote[],
+  notes: ClassNoteMap,
   g: graphlib.Graph,
   startEdgeId: number,
-  classes: ClassMap
+  classes: ClassMap,
+  parent?: string,
 ) {
   log.info(notes);
 
-  notes.forEach(function (note, i) {
-    const vertex = note;
+  [...notes.values()]
+  .filter(note => note.parent === parent)
+  .forEach(function (vertex) {
 
     const cssNoteStr = '';
 
@@ -181,10 +186,14 @@ export const addNotes = function (
     g.setNode(vertex.id, node);
     log.info('setNode', node);
 
+    if (parent) {
+      g.setParent(vertex.id, parent);
+    }
+
     if (!vertex.class || !classes.has(vertex.class)) {
       return;
     }
-    const edgeId = startEdgeId + i;
+    const edgeId = startEdgeId + vertex.index;
 
     const edgeData: EdgeData = {
       id: `edgeNote${edgeId}`,
@@ -329,7 +338,7 @@ export const draw = async function (text: string, id: string, _version: string, 
   const namespaces: NamespaceMap = diagObj.db.getNamespaces();
   const classes: ClassMap = diagObj.db.getClasses();
   const relations: ClassRelation[] = diagObj.db.getRelations();
-  const notes: ClassNote[] = diagObj.db.getNotes();
+  const notes: ClassNoteMap = diagObj.db.getNotes();
   log.info(relations);
   addNamespaces(namespaces, g, id, diagObj);
   addClasses(classes, g, id, diagObj);
