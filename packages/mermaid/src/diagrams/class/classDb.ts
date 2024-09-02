@@ -459,7 +459,6 @@ const getNamespaces = function (): NamespaceMap {
  * @public
  */
 export const addClassesToNamespace = function (id: string, classNames: string[], noteNames: string[]) {
-  log.info(`id: ${id}, classNames: [${classNames.join(',')}]`);
   if (!namespaces.has(id)) {
     return;
   }
